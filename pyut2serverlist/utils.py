@@ -1,11 +1,6 @@
 import struct
 
 
-def unpack(data: bytes, offset=0) -> bytes:
-    """Unpack a byte-length-prefixed string"""
-    return data[offset + 1:offset + int(data[offset])]
-
-
 def pack(data: bytes) -> bytes:
     """Pack a byte-length-prefixed string"""
     data += b'\x00'

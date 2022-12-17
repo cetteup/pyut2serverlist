@@ -6,7 +6,7 @@ from .connection import Connection
 from .exceptions import AuthError
 from .packet import PrincipalPacket
 from .server import Server
-from .utils import pack, unpack, int_to_ip
+from .utils import pack, int_to_ip
 
 
 class PrincipalServer:
@@ -27,7 +27,7 @@ class PrincipalServer:
     def authenticate(self) -> None:
         challenge = self.connection.read()
 
-        challenge_response = self.build_auth_packet(self.cd_key, unpack(challenge.body))
+        challenge_response = self.build_auth_packet(self.cd_key, challenge.buffer().read_pascal_bytestring(1))
         self.connection.write(challenge_response)
 
         approval = self.connection.read()
@@ -59,6 +59,7 @@ class PrincipalServer:
             server_packet = self.connection.read()
             buffer = server_packet.buffer()
             packed_ip, game_port, query_port = buffer.read_uint(), buffer.read_ushort(), buffer.read_ushort()
+            name = buffer.read_pascal_string(1)
             servers.append(Server(int_to_ip(packed_ip), query_port, game_port))
 
         return servers

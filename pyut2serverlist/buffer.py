@@ -28,10 +28,13 @@ class Buffer:
     def skip(self, length: int = 1) -> None:
         self.index += length
 
-    def read_pascal_string(self, offset: int = 0, encoding: str = 'latin1') -> str:
+    def read_pascal_bytestring(self, offset: int = 0) -> bytes:
         length = self.read_uchar()
         v = self.read(length)
-        return v[:-offset].decode(encoding)
+        return v[:-offset]
+
+    def read_pascal_string(self, offset: int = 0, encoding: str = 'latin1') -> str:
+        return self.read_pascal_bytestring().decode(encoding)
 
     def read_uchar(self) -> int:
         v, *_ = struct.unpack('<B', self.read(1))
