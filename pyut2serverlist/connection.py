@@ -1,7 +1,9 @@
 import socket
 import time
+from typing import Type
 
-from .constants import HEADER_LENGTH
+from .buffer import Buffer
+from .constants import UDP_MAX_DATA_SIZE
 from .exceptions import ConnectionError, TimeoutError
 from .logger import logger
 from .packet import Packet
@@ -11,15 +13,17 @@ class Connection:
     address: str
     port: int
     protocol: int
+    packet_type: Type[Packet]
     timeout: float
 
     sock: socket.socket
     is_connected: bool
 
-    def __init__(self, address: str, port: int, protocol: socket.SocketKind = socket.SOCK_STREAM, timeout: float = 2.0):
+    def __init__(self, address: str, port: int, protocol: socket.SocketKind, packet_type: Type[Packet], timeout: float):
         self.address = address
         self.port = port
         self.protocol = protocol
+        self.packet_type = packet_type
         self.timeout = timeout
 
         self.is_connected = False
@@ -53,7 +57,7 @@ class Connection:
         except socket.error:
             raise ConnectionError('Failed to send data to server')
 
-        logger.debug(packet)
+        logger.debug(bytes(packet))
 
     def read(self) -> Packet:
         if not self.is_connected:
@@ -62,51 +66,58 @@ class Connection:
 
         logger.debug('Reading from socket')
 
-        packet = Packet()
-
-        logger.debug('Reading packet header')
+        packet = self.packet_type()
         last_received = time.time()
         timed_out = False
-        while len(packet.header) < HEADER_LENGTH and not timed_out:
-            iteration_buffer = self.read_safe(HEADER_LENGTH - len(packet.header))
-            packet.header += iteration_buffer
+        while (packet_buflen := packet.buflen() > 0) and not timed_out:
+            # We can read partial data on a TCP connection, but have to read all available data when using UDP
+            # (any data left on a UDP socket will be discarded)
+            buflen = packet_buflen if self.protocol == socket.SOCK_STREAM else UDP_MAX_DATA_SIZE
+
+            try:
+                iteration_buffer = self.read_safe(buflen)
+            except TimeoutError:
+                """
+                Treat as timeout if we
+                a) did not receive a complete header
+                b) did not receive a complete body of known length
+                c) did not receive any body data
+                """
+                if packet.header_buflen() > 0 or \
+                        packet.body_buflen() > 0 and packet.INDICATES_LENGTH or \
+                        len(packet.body) == 0:
+                    timed_out = True
+                break
+
+            # Append whatever data is missing from the head to it
+            if (header_buflen := packet.header_buflen()) > 0:
+                packet.header += iteration_buffer.read(min(header_buflen, iteration_buffer.length))
+                # Log packet header once complete
+                if packet.header_buflen() == 0:
+                    logger.debug(f'Received header: {packet.header}')
+
+            # Append any remaining data to body
+            packet.body += iteration_buffer.get_buffer()
 
             # Update timestamp if any data was retrieved during current iteration
-            if len(iteration_buffer) > 0:
+            if iteration_buffer.length > 0:
                 last_received = time.time()
             timed_out = time.time() > last_received + self.timeout
-
-        logger.debug(packet.header)
 
         if timed_out:
-            raise TimeoutError('Timed out while reading packet header')
+            raise TimeoutError('Timed out while receiving server data')
 
-        # Read number of bytes indicated by packet header
-        logger.debug('Reading packet body')
-        last_received = time.time()
-        timed_out = False
-        while len(packet.body) < packet.indicated_body_length() and not timed_out:
-            iteration_buffer = self.read_safe(packet.indicated_body_length() - len(packet.body))
-            packet.body += iteration_buffer
-
-            # Update timestamp if any data was retrieved during current iteration
-            if len(iteration_buffer) > 0:
-                last_received = time.time()
-            timed_out = time.time() > last_received + self.timeout
-
-        logger.debug(packet.body)
+        logger.debug(f'Received body: {packet.body}')
 
         return packet
 
-    def read_safe(self, buflen: int) -> bytes:
+    def read_safe(self, buflen: int) -> Buffer:
         try:
-            buffer = self.sock.recv(buflen)
+            return Buffer(self.sock.recv(buflen))
         except socket.timeout:
             raise TimeoutError('Timed out while receiving server data')
         except (socket.error, ConnectionResetError) as e:
             raise ConnectionError(f'Failed to receive data from server ({e})')
-
-        return buffer
 
     def __del__(self):
         self.close()
