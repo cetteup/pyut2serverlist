@@ -34,7 +34,7 @@ class Buffer:
         return v[:-offset]
 
     def read_pascal_string(self, offset: int = 0, encoding: str = 'latin1') -> str:
-        return self.read_pascal_bytestring().decode(encoding)
+        return self.read_pascal_bytestring(offset).decode(encoding)
 
     def read_uchar(self) -> int:
         v, *_ = struct.unpack('<B', self.read(1))
