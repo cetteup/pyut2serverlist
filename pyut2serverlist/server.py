@@ -6,6 +6,7 @@ from typing import List
 from .buffer import Buffer
 from .connection import Connection
 from .packet import ServerPacket
+from .utils import read_unreal_string
 
 
 class ServerQueryType(IntEnum):
@@ -40,7 +41,7 @@ class Server:
         yield 'query_port', self.query_port
         yield 'game_port', self.game_port
 
-    def get_info(self, timeout: float = 1.0):
+    def get_info(self, timeout: float = 1.0, strip_colors: bool = True):
         buffer, *_ = self.query(ServerQueryType.INFO, timeout=timeout)
         """
         Packet structure should be
@@ -60,9 +61,9 @@ class Server:
             ip=buffer.read_pascal_string(1),
             game_port=buffer.read_uint(),
             query_port=buffer.read_uint(),
-            name=buffer.read_pascal_string(1),
-            map=buffer.read_pascal_string(1),
-            game_type=buffer.read_pascal_string(1),
+            name=read_unreal_string(buffer, strip_colors=strip_colors),
+            map=read_unreal_string(buffer, strip_colors=strip_colors),
+            game_type=read_unreal_string(buffer, strip_colors=strip_colors),
             num_players=buffer.read_uint(),
             max_players=buffer.read_uint()
         )

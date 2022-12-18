@@ -59,7 +59,6 @@ class PrincipalServer:
             server_packet = self.connection.read()
             buffer = server_packet.buffer()
             packed_ip, game_port, query_port = buffer.read_uint(), buffer.read_ushort(), buffer.read_ushort()
-            name = buffer.read_pascal_string(1)
             servers.append(Server(int_to_ip(packed_ip), query_port, game_port))
 
         return servers

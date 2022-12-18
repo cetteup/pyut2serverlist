@@ -25,6 +25,9 @@ class Buffer:
 
         return data
 
+    def peek(self, length: int = 1) -> bytes:
+        return self.data[self.index:self.index + length]
+
     def skip(self, length: int = 1) -> None:
         self.index += length
 
