@@ -1,25 +1,34 @@
 import socket
+from enum import Enum
 from hashlib import md5
 from typing import List
 
+from .buffer import Buffer
 from .connection import Connection
 from .exceptions import AuthError
 from .packet import PrincipalPacket
 from .server import Server
-from .utils import pack, int_to_ip
+from .utils import int_to_ip
+
+
+class Game(str, Enum):
+    UT2003 = 'ut2003'
+    UT2004 = 'ut2004'
 
 
 class PrincipalServer:
     address: str
     port: int
+    game: Game
     cd_key: bytes
 
     connection: Connection
     authenticated: bool
 
-    def __init__(self, address: str, port: int, cd_key: str, timeout: float = 2.0):
+    def __init__(self, address: str, port: int, game: Game, cd_key: str, timeout: float = 2.0):
         self.address = address
         self.port = port
+        self.game = game
         self.cd_key = cd_key.encode()
         self.connection = Connection(self.address, self.port, socket.SOCK_STREAM, PrincipalPacket, timeout=timeout)
         self.authenticated = False
@@ -33,14 +42,21 @@ class PrincipalServer:
     def authenticate(self) -> None:
         challenge = self.connection.read()
 
-        challenge_response = self.build_auth_packet(self.cd_key, challenge.buffer().read_pascal_bytestring(1))
+        challenge_response = self.build_challenge_response_packet(
+            self.game,
+            self.cd_key,
+            challenge.buffer().read_pascal_bytestring(1)
+        )
         self.connection.write(challenge_response)
 
         approval = self.connection.read()
         if (approval_result := approval.buffer().read_pascal_string(1)) != 'APPROVED':
             raise AuthError(f'Authentication failed: {approval_result}')
 
-        self.connection.write(PrincipalPacket.build(pack(b"0014e800000000000000000000000000")))
+        if self.game is Game.UT2003:
+            return
+
+        self.connection.write(self.build_verification_packet())
 
         verification = self.connection.read()
         if (verification_result := verification.buffer().read_pascal_string(1)) != 'VERIFIED':
@@ -70,11 +86,39 @@ class PrincipalServer:
         return servers
 
     @staticmethod
-    def build_auth_packet(cd_key: bytes, challenge: bytes) -> PrincipalPacket:
+    def build_challenge_response_packet(game: Game, cd_key: bytes, challenge: bytes) -> PrincipalPacket:
         cd_key_hash = md5(cd_key).hexdigest()
         challenge_response_hash = md5(cd_key + challenge).hexdigest()
 
-        # TODO Figure out meaning of additional data, see https://github.com/chc/openspy-core-v2/blob/cf248cdf01c8fb78c679d2c0c32795eb054659c5/code/utmaster/server/commands/handle_challenge.cpp#L11
-        data = b"%s%s%s)\r\x00\x00\x05%s\x16\x04\x00\x00\x86\x80\x00\x00\x18\x00\x00\x00\x00" % tuple(
-            map(pack, [cd_key_hash.encode(), challenge_response_hash.encode(), b"UT2K4CLIENT", b"int"]))
-        return PrincipalPacket.build(data)
+        if game is Game.UT2003:
+            client, version = 'CLIENT', 2225
+        else:
+            client, version = 'UT2K4CLIENT', 3369
+
+        buffer = Buffer()
+        buffer.write_pascal_string(cd_key_hash)
+        buffer.write_pascal_string(challenge_response_hash)
+        buffer.write_pascal_string(client)
+        buffer.write_uint(version)  # game version
+
+        if game is Game.UT2003:
+            buffer.write_uint(1852376069)  # unknown
+            buffer.write_uchar(116)  # unknown
+        else:
+            buffer.write_uchar(5)  # OS
+
+        buffer.write_pascal_string('int')  # language
+
+        if game is Game.UT2004:
+            buffer.write_uint(2606)  # gpu device id
+            buffer.write_uint(32902)  # gpu vendor id
+            buffer.write_uint(20)  # cpu speed
+            buffer.write_uchar(0)  # cpu type
+
+        return PrincipalPacket.build(buffer.data)
+
+    @staticmethod
+    def build_verification_packet() -> PrincipalPacket:
+        buffer = Buffer()
+        buffer.write_pascal_string('0014e800000000000000000000000000')
+        return PrincipalPacket.build(buffer.data)

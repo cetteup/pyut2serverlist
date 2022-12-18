@@ -1,6 +1,6 @@
 from .connection import Connection
 from .exceptions import Error, ConnectionError, TimeoutError, AuthError
-from .principalserver import PrincipalServer
+from .principalserver import PrincipalServer, Game
 from .server import Server
 
 """
@@ -16,4 +16,4 @@ __credits__ = [
     'https://github.com/Austinb/GameQ',
     'https://github.com/gamedig/node-gamedig'
 ]
-__all__ = ['Connection', 'PrincipalServer', 'Server', 'Error', 'ConnectionError', 'TimeoutError', 'AuthError']
+__all__ = ['Connection', 'PrincipalServer', 'Server', 'Game', 'Error', 'ConnectionError', 'TimeoutError', 'AuthError']

@@ -8,7 +8,7 @@ class Buffer:
     length: int
     index: int
 
-    def __init__(self, data: bytes):
+    def __init__(self, data: bytes = b''):
         self.data = data
         self.length = len(data)
         self.index = 0
@@ -50,3 +50,23 @@ class Buffer:
     def read_uint(self) -> int:
         v, *_ = struct.unpack('<I', self.read(4))
         return v
+
+    def write(self, v: bytes) -> None:
+        self.data += v
+        self.length += len(v)
+
+    def write_pascal_bytestring(self, v: bytes) -> None:
+        v += b'\x00'
+        self.write(chr(min(255, len(v))).encode() + v)
+
+    def write_pascal_string(self, v: str, encoding: str = 'latin1') -> None:
+        self.write_pascal_bytestring(v.encode(encoding))
+
+    def write_uchar(self, v: int) -> None:
+        self.write(struct.pack('<B', v))
+
+    def write_ushort(self, v: int) -> None:
+        self.write(struct.pack('<H', v))
+
+    def write_uint(self, v: int) -> None:
+        self.write(struct.pack('<I', v))
