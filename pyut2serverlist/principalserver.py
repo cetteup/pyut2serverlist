@@ -24,6 +24,12 @@ class PrincipalServer:
         self.connection = Connection(self.address, self.port, socket.SOCK_STREAM, PrincipalPacket, timeout=timeout)
         self.authenticated = False
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *excinfo):
+        self.connection.close()
+
     def authenticate(self) -> None:
         challenge = self.connection.read()
 
