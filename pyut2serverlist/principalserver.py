@@ -100,13 +100,7 @@ class PrincipalServer:
         buffer.write_pascal_string(challenge_response_hash)
         buffer.write_pascal_string(client)
         buffer.write_uint(version)  # game version
-
-        if game is Game.UT2003:
-            buffer.write_uint(1852376069)  # unknown
-            buffer.write_uchar(116)  # unknown
-        else:
-            buffer.write_uchar(5)  # OS
-
+        buffer.write_uchar(5)  # OS
         buffer.write_pascal_string('int')  # language
 
         if game is Game.UT2004:
