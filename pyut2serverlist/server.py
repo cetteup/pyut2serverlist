@@ -68,7 +68,7 @@ class Server:
             max_players=buffer.read_uint()
         )
 
-        # Update game port if unkown
+        # Update game port if unknown
         if self.game_port == -1:
             self.game_port = info.game_port
 

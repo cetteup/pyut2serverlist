@@ -12,22 +12,7 @@ def int_to_ip(packed: int) -> str:
 
 
 def read_unreal_string(buffer: Buffer, strip_colors: bool = False) -> str:
-    length = buffer.read_uchar()
-    encoding = 'latin1'
-    # See https://github.com/gamedig/node-gamedig/blob/70ec2a45a793b95ff4cfb00257f806fe4ea77afe/protocols/unreal2.js#L97
-    if length >= 0x80:
-        length = (length & 0x7f) * 2
-        encoding = 'utf16'
-
-        if buffer.peek(1) == 1:
-            buffer.read(1)
-
-    v = buffer.read(length)
-    out = v.decode(encoding, errors='replace')
-
-    if out[-1:] == chr(0):
-        out = out[:-1]
-
+    out = buffer.read_pascal_string(1)
     if strip_colors:
         out = COLOR_REGEX.sub('', out)
 

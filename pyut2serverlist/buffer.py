@@ -32,12 +32,12 @@ class Buffer:
         self.index += length
 
     def read_pascal_bytestring(self, offset: int = 0) -> bytes:
-        length = self.read_uchar()
+        length = self.read_compact_int()
         v = self.read(length)
         return v[:-offset]
 
     def read_pascal_string(self, offset: int = 0, encoding: str = 'latin1') -> str:
-        return self.read_pascal_bytestring(offset).decode(encoding)
+        return self.read_pascal_bytestring(offset).decode(encoding, errors='replace')
 
     def read_uchar(self) -> int:
         v, *_ = struct.unpack('<B', self.read(1))
@@ -51,13 +51,38 @@ class Buffer:
         v, *_ = struct.unpack('<I', self.read(4))
         return v
 
+    def read_compact_int(self) -> int:
+        # https://wiki.beyondunreal.com/Legacy:Package_File_Format/Data_Details#Index.2FCompactIndex_values
+        v = 0
+        signed = False
+        for i in range(0, 5):
+            x = self.read_uchar()
+            if i == 0:
+                if (x & 0x80) > 0:
+                    signed = True
+                v |= x & 0x3f
+                if (x & 0x40) == 0:
+                    break
+            elif i == 4:
+                v |= (x & 0x1f) << (6 + (3 * 7))
+            else:
+                v |= (x & 0x7f) << (6 + ((i - 1) * 7))
+                if (x & 0x80) == 0:
+                    break
+
+        if signed:
+            v *= -1
+
+        return v
+
     def write(self, v: bytes) -> None:
         self.data += v
         self.length += len(v)
 
     def write_pascal_bytestring(self, v: bytes) -> None:
         v += b'\x00'
-        self.write(chr(min(255, len(v))).encode() + v)
+        self.write_compact_int(len(v))
+        self.write(v)
 
     def write_pascal_string(self, v: str, encoding: str = 'latin1') -> None:
         self.write_pascal_bytestring(v.encode(encoding))
@@ -70,3 +95,32 @@ class Buffer:
 
     def write_uint(self, v: int) -> None:
         self.write(struct.pack('<I', v))
+
+    def write_compact_int(self, v: int) -> None:
+        v_abs = abs(v)
+        for i in range(0, 5):
+            x = 0
+            last = False
+            if i == 0:
+                if v < 0:
+                    x |= 0x80
+                x |= (v_abs & 0x3f)
+                if v_abs >= 0x40:
+                    x |= 0x40
+                else:
+                    last = True
+            elif i == 4:
+                v_abs >>= 7
+                x |= (v_abs & 0x1f)
+            else:
+                v_abs >>= min(6 + (i - 1), 7)
+                x |= (v_abs & 0x7f)
+                if v_abs >= 0x80:
+                    x |= 0x80
+                else:
+                    last = True
+
+            self.write_uchar(x)
+
+            if last:
+                break
