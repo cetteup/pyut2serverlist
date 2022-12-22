@@ -33,6 +33,10 @@ class Buffer:
 
     def read_pascal_bytestring(self, offset: int = 0) -> bytes:
         length = self.read_compact_int()
+        # At least one server returns a seemingly incorrectly built length indicator,
+        # equal to negative half the real value
+        if length < 0:
+            length *= -2
         v = self.read(length)
         return v[:-offset]
 
