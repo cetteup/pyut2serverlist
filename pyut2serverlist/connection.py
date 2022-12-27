@@ -69,7 +69,7 @@ class Connection:
         packet = self.packet_type()
         last_received = time.time()
         timed_out = False
-        while (packet_buflen := packet.buflen() > 0) and not timed_out:
+        while (packet_buflen := packet.buflen()) > 0 and not timed_out:
             # We can read partial data on a TCP connection, but have to read all available data when using UDP
             # (any data left on a UDP socket will be discarded)
             buflen = packet_buflen if self.protocol == socket.SOCK_STREAM else UDP_MAX_DATA_SIZE
