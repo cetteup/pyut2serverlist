@@ -6,7 +6,6 @@ from typing import List
 from .buffer import Buffer
 from .connection import Connection
 from .packet import ServerPacket
-from .utils import read_unreal_string
 
 
 class ServerQueryType(IntEnum):
@@ -61,9 +60,9 @@ class Server:
             ip=buffer.read_pascal_string(1),
             game_port=buffer.read_uint(),
             query_port=buffer.read_uint(),
-            name=read_unreal_string(buffer, strip_colors=strip_colors),
-            map=read_unreal_string(buffer, strip_colors=strip_colors),
-            game_type=read_unreal_string(buffer, strip_colors=strip_colors),
+            name=buffer.read_pascal_string(1, strip_colors=strip_colors),
+            map=buffer.read_pascal_string(1, strip_colors=strip_colors),
+            game_type=buffer.read_pascal_string(1, strip_colors=strip_colors),
             num_players=buffer.read_uint(),
             max_players=buffer.read_uint()
         )

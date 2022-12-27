@@ -1,6 +1,9 @@
+import re
 import struct
 
 from .exceptions import Error
+
+COLOR_REGEX = re.compile('\x1b...|[\x00-\x1a]')
 
 
 class Buffer:
@@ -40,8 +43,12 @@ class Buffer:
         v = self.read(length)
         return v[:-offset]
 
-    def read_pascal_string(self, offset: int = 0, encoding: str = 'latin1') -> str:
-        return self.read_pascal_bytestring(offset).decode(encoding, errors='replace')
+    def read_pascal_string(self, offset: int = 0, encoding: str = 'latin1', strip_colors: bool = False) -> str:
+        raw = self.read_pascal_bytestring(offset).decode(encoding, errors='replace')
+        if strip_colors:
+            return COLOR_REGEX.sub('', raw)
+
+        return raw
 
     def read_uchar(self) -> int:
         v, *_ = struct.unpack('<B', self.read(1))
@@ -54,6 +61,10 @@ class Buffer:
     def read_uint(self) -> int:
         v, *_ = struct.unpack('<I', self.read(4))
         return v
+
+    def read_ip(self) -> str:
+        v = self.read(4)
+        return "%d.%d.%d.%d" % struct.unpack("<BBBB", v)
 
     def read_compact_int(self) -> int:
         # https://wiki.beyondunreal.com/Legacy:Package_File_Format/Data_Details#Index.2FCompactIndex_values

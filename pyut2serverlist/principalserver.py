@@ -8,7 +8,6 @@ from .connection import Connection
 from .exceptions import AuthError
 from .packet import PrincipalPacket
 from .server import Server
-from .utils import int_to_ip
 
 
 class Game(str, Enum):
@@ -80,8 +79,8 @@ class PrincipalServer:
         for _ in range(num_servers):
             server_packet = self.connection.read()
             buffer = server_packet.buffer()
-            packed_ip, game_port, query_port = buffer.read_uint(), buffer.read_ushort(), buffer.read_ushort()
-            servers.append(Server(int_to_ip(packed_ip), query_port, game_port))
+            ip, game_port, query_port = buffer.read_ip(), buffer.read_ushort(), buffer.read_ushort()
+            servers.append(Server(ip, query_port, game_port))
 
         return servers
 
