@@ -9,7 +9,7 @@ pyut2serverlist.
 Simple Python library for querying Unreal Engine 2 based principal servers and their game servers.
 """
 
-__version__ = '0.0.6'
+__version__ = '0.1.0'
 __author__ = 'cetteup'
 __credits__ = [
     'https://github.com/CVSoft/MSQuery',
