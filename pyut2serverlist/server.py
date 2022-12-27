@@ -40,6 +40,9 @@ class Server:
         yield 'query_port', self.query_port
         yield 'game_port', self.game_port
 
+    def __repr__(self):
+        return f'{self.ip}:{self.game_port}'
+
     def get_info(self, timeout: float = 1.0, strip_colors: bool = True):
         buffer, *_ = self.query(ServerQueryType.INFO, timeout=timeout)
         """
