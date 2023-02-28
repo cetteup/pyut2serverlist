@@ -24,7 +24,7 @@ The following example retrieves and prints a game server list for Unreal Tournam
 ```python
 from pyut2serverlist import PrincipalServer, Game, Error, Filter, Comparator
 
-principal = PrincipalServer('ut2004master1.epicgames.com', 28902, Game.UT2004, 'some-cd-key')
+principal = PrincipalServer('utmaster.openspy.net', 28902, Game.UT2004, 'some-cd-key')
 
 try:
     servers = principal.get_servers(
