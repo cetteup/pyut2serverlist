@@ -22,12 +22,14 @@ $ pip install pyut2serverlist
 The following example retrieves and prints a game server list for Unreal Tournament 2004 directly from Epic Games.
 
 ```python
-from pyut2serverlist import PrincipalServer, Game, Error
+from pyut2serverlist import PrincipalServer, Game, Error, Filter, Comparator
 
 principal = PrincipalServer('ut2004master1.epicgames.com', 28902, Game.UT2004, 'some-cd-key')
 
 try:
-    servers = principal.get_servers()
+    servers = principal.get_servers(
+        Filter('gametype', Comparator.Equals, 'xDeathMatch')
+    )
     print(servers)
 except Error as e:
     print(e)

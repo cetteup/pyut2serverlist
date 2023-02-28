@@ -6,6 +6,7 @@ from typing import List
 from .buffer import Buffer
 from .connection import Connection
 from .exceptions import AuthError
+from .filter import Filter
 from .packet import PrincipalPacket
 from .server import Server
 
@@ -63,13 +64,16 @@ class PrincipalServer:
 
         self.authenticated = True
 
-    def get_servers(self) -> List[Server]:
+    def get_servers(self, *args: Filter) -> List[Server]:
         if not self.authenticated:
             self.authenticate()
 
-        # TODO Implement filters
-        # Just get all servers with a non-empty gametype for now (should be all servers)
-        query_packet = PrincipalPacket.build(b'\x00\x01\tgametype\x00\x01\x00\x04')
+        # Packet always contains an extra zero byte for some reason
+        buffer = Buffer(b'\x00')
+        buffer.write_uchar(len(args))
+        for item in args:
+            buffer.write(bytes(item))
+        query_packet = PrincipalPacket.build(buffer.get_buffer())
         self.connection.write(query_packet)
 
         result = self.connection.read()
